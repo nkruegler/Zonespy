@@ -1,0 +1,7 @@
+Zonespy/__pycache__/
+config.toml
+Zonespy/ModuleData/NHead.csv
+Zonespy/ModuleData/SHead.csv
+Zonespy/ModuleData/Kruegler2025_AuroralDensities.dat
+Zonespy/ExampleInstrumData/*
+!Zonespy/ExampleInstrumData/.gitkeep
