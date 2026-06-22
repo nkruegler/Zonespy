@@ -1,3 +1,5 @@
 [paths]
 spice_dir = "path/to/SPICE"
-data_dir = "path/to/data"
+
+use_external = true
+external_data_dir = "path/to/data"
