@@ -1,14 +1,30 @@
-[project]
-name = "Zonespy"
-version = "0.0.0"
-authors = [
-  { name="Nick Kruegler", email="krue0315@umn.edu" },
-]
-description = "A package to use Juno instrument data for the identification of Jupiter auroral zones"
-readme = "README.md"
-requires-python = ">=3.13"
-
-
 [build-system]
 requires = ["hatchling >= 1.26"]
 build-backend = "hatchling.build"
+
+[project]
+name = "Zonespy"
+version = "1.0.0"
+description = "A package to use Juno instrument data for the identification of Jupiter auroral zones"
+readme = "README.md"
+requires-python = ">=3.13"
+authors = [
+  { name="Nick Kruegler", email="krue0315@umn.edu" },
+]
+license = "MIT"
+license-files = [
+  "LICENSE"
+]
+classifiers = [
+  "Programming Language :: Python :: 3"
+]
+dependencies = [
+  "numpy",
+  "pandas",
+  "scipy",
+  "matplotlib",
+  "astropy",
+  "spiceypy",
+  "JupiterMag",
+  "requests"
+]
