@@ -25,19 +25,19 @@ Zonespy can be installed directly from GitHub using pip:
 pip install git+https://github.com/nkruegler/Zonespy.git
 ```
 
-<!-- ## SPICE Kernels
+## SPICE Kernels
 
 Zonespy uses [SpiceyPy](https://spiceypy.readthedocs.io/) to compute Juno ephemeris and perform time conversions. The following SPICE kernel types are required:
 
-- Spacecraft ephemeris (SPK)
-- Leap-second (LSK)
-- Frame (FK)
-- Planetary constants (PCK)
+- Leap-second (LSK): `naif0012.tls`
+- Planetary constants (PCK): `pck00010.tpc`
+- Juno reference frame specifications (FK): `juno_v12.tf`
+- Spacecraft ephemeris (SPK): `juno_rec_*.bsp`
 
 Kernels are available from the NAIF PDS archive:
 https://naif.jpl.nasa.gov/pub/naif/pds/data/jno-j_e_ss-spice-6-v1.0/jnosp_1000/
 
-Kernels must be loaded before instantiating any Zonespy class. Refer to the [SpiceyPy documentation](https://spiceypy.readthedocs.io/) for guidance on loading kernels. -->
+Kernels are loaded upon import of Zonespy.
 
 ## Data Sources
 
@@ -111,16 +111,16 @@ Utility functions used across the module, including footprint interpolation (`in
 Defines `MAGData`: loads and processes Juno/MAG 1-second calibrated magnetic field data. Computes magnetic perturbations and field-aligned current density using the Lühr single-spacecraft method.
 
 ### `jedi`
-Defines `JEDIData`: loads and processes Juno/JEDI HIERSESP electron spectra. Assembles a 3-D intensity datablock and provides methods for computing energy distributions, pitch angle distributions, and loss-cone-separated mean intensities.
+Defines `JEDIData`: loads and processes Juno/JEDI HIERSESP electron spectra. Assembles a 3-D intensity datablock and provides methods for computing energy distributions, pitch angle distributions, and loss-cone mean intensities.
 
-### `UVS`
-Defines `UVSData`: reads locally stored Juno/UVS FITS files and unpacks UV brightness profiles along the spacecraft trajectory and four spatial offsets.
+### `uvs`
+Defines `UVSData`: reads locally stored Juno/UVS FITS files and unpacks UV brightness image maps and the profiles along the spacecraft trajectory.
 
 ### `jade_dens`
 Provides `compileJADEMoments`: downloads JADE electron density moments from the PDS for each perijove pass, appends magnetic footprint coordinates and oval offset angles, and saves the result to a single cached file.
 
 ### `plotting`
-Utility functions for matplotlib stackplots, including consistent grid styling, multi-row datetime axis formatting with footprint coordinates and alpha values, minor tick placement, and auroral zone interval highlighting.
+Utility functions for creating stackplots, including consistent grid styling, multi-row datetime axis formatting with footprint coordinates and alpha values, minor tick placement, and auroral zone interval highlighting.
 
 ## License
 

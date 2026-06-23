@@ -25,8 +25,8 @@ SPICE_DIR = config["paths"]["spice_dir"]
 sp.furnsh(SPICE_DIR + "naif0012.tls") # leapseconds
 sp.furnsh(SPICE_DIR + "pck00010.tpc") # planetary constants
 sp.furnsh(SPICE_DIR + "juno_v12.tf") # Juno frame details
-# load all available juno empherides
-for file in glob.glob(SPICE_DIR + r"spk/spk_rec_*.bsp"):
+# Load all available Juno empherides
+for file in glob.glob(SPICE_DIR + r"juno_rec_*.bsp"):
     sp.furnsh(file)
 
 # --- Initilizing JupiterMag Models ---
