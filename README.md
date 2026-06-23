@@ -17,6 +17,8 @@ Zonespy requires the following Python packages:
 
 Standard library dependencies: `os`, `glob`, `datetime`, `tomllib`.
 
+Zonespy was built and tested using Windows.
+
 ## Installation
 
 Zonespy can be installed directly from GitHub using pip:
@@ -24,6 +26,8 @@ Zonespy can be installed directly from GitHub using pip:
 ```bash
 pip install git+https://github.com/nkruegler/Zonespy.git
 ```
+
+After installation and before importing the package, the Zonespy config file must be set up to include (i) the directory where SPICE kernels (see below) are stored locally, and (ii) the destination directory for the storage of downloaded data files created by the package. An example config is found in `config.example.toml`. The example file can be modified to include the relevant paths and renamed to `config.toml`.
 
 ## SPICE Kernels
 
@@ -37,7 +41,7 @@ Zonespy uses [SpiceyPy](https://spiceypy.readthedocs.io/) to compute Juno epheme
 Kernels are available from the NAIF PDS archive:
 https://naif.jpl.nasa.gov/pub/naif/pds/data/jno-j_e_ss-spice-6-v1.0/jnosp_1000/
 
-Kernels are loaded upon import of Zonespy.
+Kernels are loaded upon import of Zonespy in Python.
 
 ## Data Sources
 

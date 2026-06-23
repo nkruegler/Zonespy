@@ -9,8 +9,13 @@ import spiceypy as sp
 MODULE_DIR = os.path.dirname(__file__)
 
 CONFIG_DIR = os.path.join(MODULE_DIR, "config.toml")
-with open(CONFIG_DIR, "rb") as f:
-    config = tomllib.load(f)
+try:
+    with open(CONFIG_DIR, "rb") as f:
+        config = tomllib.load(f)
+except:
+    raise Exception("File config.toml not present. " \
+    "Edit config.example.toml to include SPICE and Instrument Data Destination Directory. " \
+    "Then rename to config.toml.")
 
 MODULE_DATA_DIR = os.path.join(MODULE_DIR, "ModuleData/")
 
