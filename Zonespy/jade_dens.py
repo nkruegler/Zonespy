@@ -76,7 +76,7 @@ def compileJADEMoments(overwrite=False):
         print(f"Getting JADE data for {perijove}")
 
         # No JADE moments data currently available for dates after 2025
-        if year>2025:
+        if year > 2025:
             print(f"No JADE data is available near {perijove}")
             continue
 
@@ -88,7 +88,7 @@ def compileJADEMoments(overwrite=False):
             df = pd.read_csv(
                 JADE_PDS_URL 
                 + f"{year}/{year}{doy_start:03}/"
-                "JAD_L50_HLS_ELC_MOM_ISO_2D_ELECTRONS_{year}{doy_start:03}_V02.CSV",
+                f"JAD_L50_HLS_ELC_MOM_ISO_2D_ELECTRONS_{year}{doy_start:03}_V02.CSV",
                 names=names
             )
 
@@ -98,7 +98,7 @@ def compileJADEMoments(overwrite=False):
                     df_end = pd.read_csv(
                         JADE_PDS_URL 
                         + f"{year}/{year}{doy_end:03}/"
-                        "JAD_L50_HLS_ELC_MOM_ISO_2D_ELECTRONS_{year}{doy_end:03}_V02.CSV",
+                        f"JAD_L50_HLS_ELC_MOM_ISO_2D_ELECTRONS_{year}{doy_end:03}_V02.CSV",
                         names=names
                     )
                     df = pd.concat([df, df_end], ignore_index=True)
