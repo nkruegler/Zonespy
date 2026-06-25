@@ -63,7 +63,7 @@ See the `examples/` directory for a complete worked example in `ZonespyExample.i
 ### 1. Define a time window
 
 ```python
-start_dt, end_dt = utils.get_start_end_time(source="omode", event="PJ01")
+start_dt, end_dt = utils.get_start_end_time(source="omode", event="06S")
 ```
 
 ### 2. Download data (first use only)
