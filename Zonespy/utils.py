@@ -129,6 +129,14 @@ def get_start_end_time(source, event, buffer=10):
         start_dt = zones_df["Start"].min() + pd.Timedelta(minutes=-buffer)
         end_dt = zones_df["End"].max() + pd.Timedelta(minutes=buffer)
 
+    elif source.lower() == "mainaurora":
+        # Filter auroral zones data to the requested event and ZI/ZII
+        zones_df = _zones_df[_zones_df["Event"].str.contains(event)]
+        zones_df = zones_df[zones_df["Zone"] != "Dif"]
+        # Calculate the time window from the earliest and latest times
+        start_dt = zones_df["Start"].min() + pd.Timedelta(minutes=-buffer)
+        end_dt = zones_df["End"].max() + pd.Timedelta(minutes=buffer)
+
     return start_dt, end_dt
 
 
