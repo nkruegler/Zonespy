@@ -345,7 +345,7 @@ def setMinorTicks(axis):
     axis.xaxis.set_minor_locator(AutoMinorLocator(minor_tick_num[idx]))
 
 
-def addZoneHighlight(axes, update=True):
+def addZoneHighlight(axes, update=True, type="background"):
     """
     Shades auroral zone intervals on all provided axes using colored, 
     hatched patches
@@ -362,12 +362,20 @@ def addZoneHighlight(axes, update=True):
         If True, reloads zone_boundary.dat from disk before drawing. 
         This ensures edits to the boundary file are reflected without 
         restarting the Python session
+    type : str, optional
+        Specifies the type of highlighting that is done:
+        "background" (default)
+            Transparent background highlighting which is best for plots 
+            without coloring
+        "bar"
+            Colored bar above the top of the subplot that does not 
+            obstruct a 2D image-style color plot
     """
     # Extract start and end times from the axes x-axis limits
     # Use timezone-naive datetimes to enable easier comparison with 
     #       zone boundary datafram
-    start_dt = mdates.num2date(axes[1].get_xlim()[0]).replace(tzinfo=None)
-    end_dt = mdates.num2date(axes[1].get_xlim()[1]).replace(tzinfo=None)
+    start_dt = mdates.num2date(axes[0].get_xlim()[0]).replace(tzinfo=None)
+    end_dt = mdates.num2date(axes[0].get_xlim()[1]).replace(tzinfo=None)
 
     # Optionally reload zone boundary data to capture recent edits
     if update:
@@ -385,17 +393,63 @@ def addZoneHighlight(axes, update=True):
     if _zones_df_pj.empty:
         return
     
+
     for i in _zones_df_pj.index:
         zone_label = _zones_df_pj["Zone"].loc[i]
         confidence = _zones_df_pj["Confidence"].loc[i]
         hatch = hatch_dict[confidence]
 
-        time_start = _zones_df_pj["Start"].loc[i]
-        time_end = _zones_df_pj["End"].loc[i]
+        time_start = np.max([_zones_df_pj["Start"].loc[i], start_dt])
+        time_end = np.min([_zones_df_pj["End"].loc[i], end_dt])
 
-        # Apply the shading to every axis in the input array
-        for axis in axes[0:]:
-            axis.axvspan(
-                time_start, time_end, color=zone_c_dict[zone_label], 
-                hatch=hatch, alpha=0.1, zorder=10
-            )
+        if type == "background":
+            # Apply the shading to every axis in the input array
+            for axis in axes[0:]:
+                axis.axvspan(
+                    time_start, time_end, color=zone_c_dict[zone_label], 
+                    hatch=hatch, alpha=0.1, zorder=10
+                )
+
+        if type == "bar":
+            # Add a bar above every axis in the input array
+            for axis in axes[0:]:
+                axis.axvspan(
+                    time_start, time_end, color=zone_c_dict[zone_label], 
+                    hatch=hatch, alpha=1, zorder=10,
+                    ymin=1, ymax=1.03, clip_on=False
+                )
+
+    # # For transparent background coloring
+    # if type == "background":
+    #     for i in _zones_df_pj.index:
+    #         zone_label = _zones_df_pj["Zone"].loc[i]
+    #         confidence = _zones_df_pj["Confidence"].loc[i]
+    #         hatch = hatch_dict[confidence]
+
+    #         time_start = _zones_df_pj["Start"].loc[i]
+    #         time_end = _zones_df_pj["End"].loc[i]
+
+    #         # Apply the shading to every axis in the input array
+    #         for axis in axes[0:]:
+    #             axis.axvspan(
+    #                 time_start, time_end, color=zone_c_dict[zone_label], 
+    #                 hatch=hatch, alpha=0.1, zorder=10
+    #             )
+
+    # # For unobtrusive coloring above the subplot
+    # elif type == "bar":
+    #     for i in _zones_df_pj.index:
+    #         zone_label = _zones_df_pj["Zone"].loc[i]
+    #         confidence = _zones_df_pj["Confidence"].loc[i]
+    #         hatch = hatch_dict[confidence]
+
+    #         time_start = np.max([_zones_df_pj["Start"].loc[i], start_dt])
+    #         time_end = np.min([_zones_df_pj["End"].loc[i], end_dt])
+
+    #         # Add a bar above every axis in the input array
+    #         for axis in axes[0:]:
+    #             axis.axvspan(
+    #                 time_start, time_end, color=zone_c_dict[zone_label], 
+    #                 hatch=hatch, alpha=1, zorder=10,
+    #                 ymin=1, ymax=1.03, clip_on=False
+    #             )
