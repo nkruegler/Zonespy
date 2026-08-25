@@ -95,6 +95,8 @@ def get_start_end_time(source, event, buffer=10):
         surrounding the window
       - "zone": uses the start and end time of classified 
         auroral zones
+      - "main aurora": same as "zone", but uses only ZI/ZII 
+        (excludes Dif)
 
     Parameters
     ----------
