@@ -1,6 +1,6 @@
-import glob
 import os
 import requests
+import warnings
 import numpy as np
 import pandas as pd
 from scipy.constants import e
@@ -838,7 +838,7 @@ class JEDIData:
         return datablock_filtered
 
 
-    def to_energy_dist(self, **kwargs):
+    def to_energy_dist(self, verbose=False, **kwargs):
         """
         Averages the datablock over pitch angle bins to obtain the 
         energy distribution (time, energy)
@@ -856,7 +856,12 @@ class JEDIData:
             averaged over the selected pitch angle direction (NaN 
             ignored)
         """
-        return np.nanmean(self.datablock_filtered_LC(**kwargs), axis=2)
+        if not verbose:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", category=RuntimeWarning)
+                return np.nanmean(self.datablock_filtered_LC(**kwargs), axis=2)
+        else:
+            return np.nanmean(self.datablock_filtered_LC(**kwargs), axis=2)
 
 
     def to_pitch_angle_dist(self, unit, **kwargs):
@@ -904,28 +909,31 @@ class JEDIData:
         if unit == "DNI":
             # Differential number intensity: bin-width-weighted sum 
             #       normalized by total energy range
-            return (
+            return np.nansum(
                 datablock_filtered 
-                * self.delE[None, :, None]
-            ).sum(axis=1) / self.delE.sum()
+                * self.delE[None, :, None],
+                axis=1
+            ) / self.delE.sum()
         
         elif unit == "DEI":
             # Differential energy intensity: same as DNI but also 
             #       weighted by mean energy
-            return (
+            return np.nansum(
                 datablock_filtered 
                 * self.mean_energies[None, :, None] 
-                * self.delE[None, :, None]
-            ).sum(axis=1) / self.delE.sum()
+                * self.delE[None, :, None],
+                axis=1
+            ) / self.delE.sum()
         
         elif unit == "EI":
             # Energy intensity: same as DEI but not normalized by the 
             #       total energy range AND is converted to SI units
-            return 1e10 * e * (
+            return 1e10 * e * np.nansum(
                 datablock_filtered 
                 * self.mean_energies[None, :, None] 
-                * self.delE[None, :, None]
-            ).sum(axis=1)
+                * self.delE[None, :, None],
+                axis=1
+            )
         else:
             Exception("Use valid unit for intensity.")
 
