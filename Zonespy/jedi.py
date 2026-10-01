@@ -656,9 +656,7 @@ class JEDIData:
         """
         # Use broadcasting ([:,None]) to compute overlaps for all 
         #       (old bin, new bin) pairs simultaneously.
-        # overlap_low[i, j] = max(old_lows[i], new_lows[j])
         overlap_low = np.maximum(old_lows[:,None], new_lows)
-        # overlap_high[i, j] = max(old_highs[i], new_highs[j])
         overlap_high = np.minimum(old_highs[:,None], new_highs)
 
         # Calculate width of overlap (setting to 0 when 
@@ -751,12 +749,16 @@ class JEDIData:
                 # delE_native shape (num_native_en_bins,)
                 delE_native = (tel_bins[1] - tel_bins[0]).to_numpy()
 
+                # Calculate the width of each new energy bin (excluding 
+                #       the segments unmeasured by the native bins)
+                delE_overlap = (bin_fraction * delE_native[:, None]).sum(axis=0)
+
                 # Energy Rebinning
                 # Multiply intensity by native bin width, project onto 
                 #       new bins via the bin_fraction array, then 
                 #       normalize by the new bin width
                 # Result shape (num_times_det, num_en_bins)
-                tel_intensities_new = (tel_intensities * delE_native) @ bin_fraction / self.delE
+                tel_intensities_new = (tel_intensities * delE_native) @ bin_fraction / delE_overlap
                 tel_counts_new = tel_counts  @ bin_fraction
 
                 # Accumulate rebinned intensities, counts, and number of 
