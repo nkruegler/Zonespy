@@ -838,13 +838,21 @@ class JEDIData:
         return datablock_filtered
 
 
-    def to_energy_dist(self, verbose=False, **kwargs):
+    def to_energy_dist(self, unit="DNI", verbose=False, **kwargs):
         """
         Averages the datablock over pitch angle bins to obtain the 
         energy distribution (time, energy)
 
         Parameters
         ----------
+        unit : str
+            Output intensity unit:
+            "DNI"
+                Differential number intensity (1/cm^2/s/sr/keV); average 
+                of the DNI across the loss cone
+            "DEI"
+                Differential energy intensity (1/cm^2/s/sr); DNI times 
+                the mean energy of the energy bin
         **kwargs
             Optional arguments passed to datablock_filtered_LC 
             (e.g. direction)
@@ -859,9 +867,17 @@ class JEDIData:
         if not verbose:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", category=RuntimeWarning)
-                return np.nanmean(self.datablock_filtered_LC(**kwargs), axis=2)
+                energy_dist = np.nanmean(self.datablock_filtered_LC(**kwargs), axis=2)
         else:
-            return np.nanmean(self.datablock_filtered_LC(**kwargs), axis=2)
+            energy_dist = np.nanmean(self.datablock_filtered_LC(**kwargs), axis=2)
+
+        if unit == "DNI":
+            return energy_dist
+        
+        elif unit == "DEI":
+            return energy_dist * self.mean_energies[None,:]
+
+        return energy_dist
 
 
     def to_pitch_angle_dist(self, unit, **kwargs):
@@ -885,7 +901,7 @@ class JEDIData:
                 intensity weighted by the width of the energy bin, 
                 normalized by the total energy range
             "DEI"
-                Differential energy intensity (1/cm^2/s/sr); sum of 
+                Differential energy intensity (keV/cm^2/s/sr/keV); sum of 
                 intensity weighted by the width of the energy bin and 
                 the mean energy of the bin, normalized by the total 
                 energy range
@@ -893,7 +909,6 @@ class JEDIData:
                 Energy intensity (mW/m^2/sr); sum of intensity weighted 
                 by the width of the energy bin and the mean energy of 
                 the bin, converted to SI units
-            DNI, DEI, EI
         **kwargs
             Optional arguments passed to datablock_filtered_LC (e.g. 
             direction)
