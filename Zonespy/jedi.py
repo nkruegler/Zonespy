@@ -411,10 +411,10 @@ class JEDIData:
 
         This method identifies the required chunk files via 
         _get_filepath_list, reads the files (skipping the header rows),
-        drops the COUNTS and CPS columns (retaining only the number 
-        intensity columns), refines the UTC timestamp using the more 
-        precise SPICE ephemeris time, trims to the requested time 
-        window, and stores the result in _raw_data
+        drops the CPS columns (retaining the number intensity and counts 
+        columns), refines the UTC timestamp using the more precise SPICE 
+        ephemeris time, trims to the requested time window, and stores 
+        the result in _raw_data
 
         Parameters
         ----------
@@ -456,9 +456,9 @@ class JEDIData:
                         "Use JEDIData.downloadJEDILocal"
                     )
 
-                # Drop raw COUNTS and CPS columns
-                # Retain the number intensity (EXF) and metadata columns 
-                col_drop = columns_df.columns.str.contains("COUNTS|CPS")
+                # Drop raw CPS columns
+                # Retain the number intensity (FLUX), COUNTS, and metadata columns
+                col_drop = columns_df.columns.str.contains("CPS")
                 col_list = columns_df.drop(columns_df.columns[col_drop], axis=1).columns.to_list()
 
                 # Read the data, skipping the subheader
@@ -694,6 +694,7 @@ class JEDIData:
         # Initilize the intensity and count arrays with the 
         #       time-energy-pitch angle bins
         intensity_sum = np.zeros((self.num_times, self.num_en_bins, self.num_pitch_angle_bins))
+        count_sum = np.zeros((self.num_times, self.num_en_bins, self.num_pitch_angle_bins))
         number_sum    = np.zeros((self.num_times, self.num_en_bins, self.num_pitch_angle_bins))
 
         for det in JEDIData._dets:
@@ -712,13 +713,14 @@ class JEDIData:
                 pa_time_series = raw[f"Pitch_Angle_T{tel}"]
                 pa_bin_idxs = np.searchsorted(self.pitch_angle_bins, pa_time_series) - 1  
 
-                # Extract intensity columns and native energy bounds for
-                #       this telescope
+                # Extract intensity/count columns and native energy 
+                #       bounds for this telescope
                 # convert tel_intensities
                 # tel_intensities shape (num_times_det, num_native_en_bins)
-                tel_intensities = raw.filter(regex=f"T{tel}EXF")
+                tel_intensities = raw.filter(regex=f"T{tel}EXF[0-9]+ FLUX")
+                tel_counts = raw.filter(regex=f"T{tel}EXF[0-9]+ COUNTS")
 
-                tel_bins = self._native_en_bins[det].filter(regex=f"T{tel}EXF").T
+                tel_bins = self._native_en_bins[det].filter(regex=f"T{tel}EXF[0-9]+ FLUX").T
 
                 # Check column ordering is consistent between intensity 
                 #       and energy bins
@@ -739,6 +741,7 @@ class JEDIData:
                 )
             
                 tel_intensities = tel_intensities.to_numpy()
+                tel_counts = tel_counts.to_numpy()
                 # Remove anamalously high intensities
                 tel_intensities = np.where(
                     tel_intensities > self.max_intensity, 
@@ -754,9 +757,10 @@ class JEDIData:
                 #       normalize by the new bin width
                 # Result shape (num_times_det, num_en_bins)
                 tel_intensities_new = (tel_intensities * delE_native) @ bin_fraction / self.delE
+                tel_counts_new = tel_counts  @ bin_fraction
 
-                # Accumulate rebinned intensities and sample counts into 
-                #       output arrays
+                # Accumulate rebinned intensities, counts, and number of 
+                #       samples into output arrays
                 # np.add.at is used to correctly handle multiple 
                 #       measurements that fall in each time-pitch 
                 #       angle bin
@@ -765,6 +769,11 @@ class JEDIData:
                         intensity_sum[:,i,:], 
                         (t_bin_idxs, pa_bin_idxs), 
                         tel_intensities_new[:,i]
+                    )
+                    np.add.at(
+                        count_sum[:,i,:], 
+                        (t_bin_idxs, pa_bin_idxs), 
+                        tel_counts_new[:,i]
                     )
                     np.add.at(
                         number_sum[:,i,:], 
@@ -776,9 +785,10 @@ class JEDIData:
         # Yields NaN if no measurements in the cell
         with np.errstate(invalid="ignore"):
             self.datablock = intensity_sum / number_sum
+            self.datablock_counts = count_sum
 
 
-    def datablock_filtered_LC(self, direction=""):
+    def datablock_filtered_LC(self, direction="", which_datablock="intensity"):
         """
         Returns a copy of the datablock with pitch angle cells outside 
         the requested loss cone diurection set to NaN
@@ -803,8 +813,13 @@ class JEDIData:
             Datablock with pitch angles not in desired direction set as 
             NaN, or the unmodified datablock if no direction given
         """
+        if which_datablock == "intensity":
+            datablock_to_filter = self.datablock
+        elif which_datablock == "counts":
+            datablock_to_filter = self.datablock_counts
+
         if not direction:
-            return self.datablock
+            return datablock_to_filter
 
         # Resolve the physical direction ("up"/"down") into a direction 
         #       relative to the magnetic field 
@@ -833,7 +848,7 @@ class JEDIData:
         filter = filter.repeat(self.num_en_bins, axis=1)
 
         # Set values outside of direction to NaN
-        datablock_filtered = np.where(filter, self.datablock, np.nan) 
+        datablock_filtered = np.where(filter, datablock_to_filter, np.nan) 
 
         return datablock_filtered
 
