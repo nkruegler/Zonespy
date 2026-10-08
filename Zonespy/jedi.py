@@ -51,6 +51,15 @@ class JEDIData:
         divide 180° evenly
     t_res : str, optional
         Time resolution as a pandas offset alias (e.g. "1s")
+    use_approx_loss_cone_angle : bool, optional
+        If True (default), use the approximate expression for the 
+        loss cone angle from Mauk et al. (2017). If False, calculate 
+        the loss cone angle explicitly from the model magnetic 
+        field at Juno and Juno's magnetic footprint (slower)
+    max_counts : float, optional
+        Maximum counts to allow into the rebinned datablock. Removes 
+        anomalous high counts/intensities that complicate subsequent 
+        analyses
     num_times : int
         Number of time bins
     time_bins : np.ndarray, shape (num_times + 1,)
@@ -99,10 +108,6 @@ class JEDIData:
         Mean differential intensity (keV/cm^2/s/sr/keV) in each 
         time-energy-pitch angle cell, averaged over all contributing 
         telescopes
-    max_intensity : float, optional
-        Maximum value of intensity to allow into the rebinned 
-        datablock. Removes extremely high intensities that 
-        complicate subsequent analyses
     """    
     
     JEDI_PDS_URL = "https://pds-ppi.igpp.ucla.edu/data/JNO-J-JED-3-CDR-V1.0/"
@@ -152,7 +157,7 @@ class JEDIData:
         pitch_angle_res=4.5, 
         t_res="1s", 
         use_approx_loss_cone_angle=True,
-        max_intensity = 1e20
+        max_counts = 1e5
     ):
         """
         Initializes a JEDIData instance and fully processes the data
@@ -166,33 +171,6 @@ class JEDIData:
             _create_datablock: rebins the intensity data into custom 
                 time-energy-pitch angle cells in the form of a 3D numpy 
                 array
-
-        Parameters
-        ----------
-        start_dt : pandas.Timestamp
-            Start time of the requested window
-        end_dt : pandas.Timestamp
-            End time of the requested window
-        lower_energy : float, optional
-            Lower bound of the output energy range (keV)
-        upper_energy : float, optional
-            Upper bound of the output energy range (keV)
-        num_en_bins : int, optional
-            Number of log-spaced output energy bins
-        pitch_angle_res : float, optional
-            Pitch angle bin width (degrees), adjusted if it does not 
-            divide 180° evenly
-        t_res : str, optional
-            Time resolution as a pandas offset alias (e.g. "1s")
-        use_approx_loss_cone_angle : bool, optional
-            If True (default), use the approximate expression for the 
-            loss cone angle from Mauk et al. (2017). If False, calculate 
-            the loss cone angle explicitly from the model magnetic 
-            field at Juno and Juno's magnetic footprint (slower)
-        max_intensity : float, optional
-            Maximum value of intensity to allow into the rebinned 
-            datablock. Removes extremely high intensities that 
-            complicate subsequent analyses
         """
         # Floor/ceil start and end times to the requested time 
         #       resolution to ensure neat time bins
@@ -204,7 +182,7 @@ class JEDIData:
         self.pitch_angle_res = pitch_angle_res
         self.t_res = t_res
         self._use_approx_loss_cone_angle = use_approx_loss_cone_angle
-        self.max_intensity = max_intensity
+        self.max_counts = max_counts
 
         # Parse raw data and native energy bins for each detector
         self._raw_data = {}
@@ -689,11 +667,13 @@ class JEDIData:
                 intensity_sum / number_sum
         with NaN values where ``number_sum == 0``
         """
-        # Initilize the intensity and count arrays with the 
+        # Initialize the intensity and count arrays with the 
         #       time-energy-pitch angle bins
         intensity_sum = np.zeros((self.num_times, self.num_en_bins, self.num_pitch_angle_bins))
         count_sum = np.zeros((self.num_times, self.num_en_bins, self.num_pitch_angle_bins))
         number_sum    = np.zeros((self.num_times, self.num_en_bins, self.num_pitch_angle_bins))
+        # Initialize the flag to track presence of anomalous high counts
+        high_count_flag = False
 
         for det in JEDIData._dets:
             raw = self._raw_data[det]
@@ -740,13 +720,7 @@ class JEDIData:
             
                 tel_intensities = tel_intensities.to_numpy()
                 tel_counts = tel_counts.to_numpy()
-                # Remove anamalously high intensities
-                tel_intensities = np.where(
-                    tel_intensities > self.max_intensity, 
-                    0, 
-                    tel_intensities
-                )
-                # delE_native shape (num_native_en_bins,)
+                
                 delE_native = (tel_bins[1] - tel_bins[0]).to_numpy()
 
                 # Calculate the width of each new energy bin (excluding 
@@ -761,25 +735,34 @@ class JEDIData:
                 tel_intensities_new = (tel_intensities * delE_native) @ bin_fraction / delE_overlap
                 tel_counts_new = tel_counts  @ bin_fraction
 
+                # Remove datablock bins with anamalously high counts
+                #       (above max_counts counts). If above that value, 
+                #       exclude from accumulation into datablock
+                valid = tel_counts_new < self.max_counts
+                if not valid.all():
+                    high_count_flag = True
+
                 # Accumulate rebinned intensities, counts, and number of 
                 #       samples into output arrays
                 # np.add.at is used to correctly handle multiple 
                 #       measurements that fall in each time-pitch 
                 #       angle bin
                 for i in range(self.num_en_bins):
+                    # Include only bins with counts less than max_counts
+                    valid_i = valid[:,i]
                     np.add.at(
                         intensity_sum[:,i,:], 
-                        (t_bin_idxs, pa_bin_idxs), 
-                        tel_intensities_new[:,i]
+                        (t_bin_idxs[valid_i], pa_bin_idxs[valid_i]), 
+                        tel_intensities_new[:,i][valid_i]
                     )
                     np.add.at(
                         count_sum[:,i,:], 
-                        (t_bin_idxs, pa_bin_idxs), 
-                        tel_counts_new[:,i]
+                        (t_bin_idxs[valid_i], pa_bin_idxs[valid_i]), 
+                        tel_counts_new[:,i][valid_i]
                     )
                     np.add.at(
                         number_sum[:,i,:], 
-                        (t_bin_idxs, pa_bin_idxs), 
+                        (t_bin_idxs[valid_i], pa_bin_idxs[valid_i]), 
                         1
                     )
 
@@ -788,6 +771,9 @@ class JEDIData:
         with np.errstate(invalid="ignore"):
             self.datablock = intensity_sum / number_sum
             self.datablock_counts = count_sum
+        # Print warning if high count values had to be excluded
+        if high_count_flag:
+            print("Anomalously high counts detected. Excluding these values.")
 
 
     def datablock_filtered_LC(self, direction="", which_datablock="intensity"):
