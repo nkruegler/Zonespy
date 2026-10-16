@@ -157,7 +157,7 @@ class JEDIData:
         pitch_angle_res=4.5, 
         t_res="1s", 
         use_approx_loss_cone_angle=True,
-        max_counts = 1e5
+        max_counts = 1e4
     ):
         """
         Initializes a JEDIData instance and fully processes the data
@@ -181,7 +181,7 @@ class JEDIData:
         self.num_en_bins = num_en_bins
         self.pitch_angle_res = pitch_angle_res
         self.t_res = t_res
-        self._use_approx_loss_cone_angle = use_approx_loss_cone_angle
+        self.use_approx_loss_cone_angle = use_approx_loss_cone_angle
         self.max_counts = max_counts
 
         # Parse raw data and native energy bins for each detector
@@ -350,13 +350,11 @@ class JEDIData:
 
                 # Download the full file on the first chunk that needs it
                 if not downloaded:
-                    if verbose:
-                        print(f"Downloading {filename} from PDS...")
+                    print(f"Downloading {filename} from PDS...")
                     r = requests.get(url)
                     downloaded = True
                     
-                    if verbose:
-                        print("Download done. Now chunking and writing to files...")
+                    print("Download done. Now chunking and writing to files...")
 
                     # Split the download text into header and data rows
                     rows = r.text.split("\r\n")
@@ -522,7 +520,7 @@ class JEDIData:
             self.para_direction = None
             self.anti_direction = None
 
-        if self._use_approx_loss_cone_angle:
+        if self.use_approx_loss_cone_angle:
             self._get_approx_loss_cone_angle()
         else:
             self._get_exact_loss_cone_angle()
@@ -738,6 +736,9 @@ class JEDIData:
                 # Remove datablock bins with anamalously high counts
                 #       (above max_counts counts). If above that value, 
                 #       exclude from accumulation into datablock
+                # As this is done after the energy rebinning, this is 
+                #       sensitive to the energy resolution, but the 
+                #       effect should be small
                 valid = tel_counts_new < self.max_counts
                 if not valid.all():
                     high_count_flag = True
@@ -1021,11 +1022,6 @@ class JEDIData:
         if require_full_LC:
             intensity_up = self._mask_by_loss_cone(intensity_up, direction="up", **kwargs)
             intensity_down = self._mask_by_loss_cone(intensity_down, direction="down", **kwargs)
-
-        #replaces mean intensity with NaN if the value is anamalously high
-        # df_para = df_para.where(df_para < 1e4, np.nan)
-        # df_anti = df_anti.where(df_anti < 1e4, np.nan)
-        # df_trap = df_trap.where(df_trap < 1e4, np.nan)
 
         intensity_dict = {
             "up":intensity_up,
