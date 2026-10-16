@@ -240,7 +240,7 @@ class AccelIntervals:
         fwd = np.full(n, False)
         prev = False    # Initializes the previous value
         for i in range(n):
-            prev = low[i] & (high[i] | prev)
+            prev = high[i] | (low[i] & prev)
             fwd[i] = prev
 
         # Backward propagation: Performs the same process for times 
@@ -248,7 +248,7 @@ class AccelIntervals:
         bwd = np.full(n, False)
         prev = False
         for i in range(n - 1, -1, -1):
-            prev = low[i] & (high[i] | prev)
+            prev = high[i] | (low[i] & prev)
             bwd[i] = prev
 
         # Energetic criterion is combination of the forward and backward 
@@ -298,10 +298,12 @@ class AccelIntervals:
         """
         merge = np.abs(np.roll(self.unmerged_intervals,shift=1) - self.unmerged_intervals)[:,0] <= np.timedelta64(1, "s")
 
+        merging_intervals = self.unmerged_intervals.copy()
+
         for i in range(len(merge) - 1, -1, -1):
             if merge[i]:
-                self.unmerged_intervals[i - 1, 1] = self.unmerged_intervals[i, 1]
-        self.merged_intervals = self.unmerged_intervals[~merge]
+                merging_intervals[i - 1, 1] = merging_intervals[i, 1]
+        self.merged_intervals = merging_intervals[~merge]
 
 
     def _remove_near_unsampled(self):
