@@ -134,4 +134,4 @@ This module incorporates code adapted from work by Bertrand Bonfond and Linus He
 
 ## Citation
 
-If you use Zonespy in your research, please cite the relevant data sources listed above. A citation for the package itself will be added upon publication.
+If you use Zonespy in your research, please give credit to the package and cite the relevant data sources listed above.
